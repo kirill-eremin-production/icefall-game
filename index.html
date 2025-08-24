@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Мини-Стратегия</title>
+  <style>
+    :root {
+      --bg: #0f1226;
+      --panel: #1b2040;
+      --accent: #5cc8ff;
+      --accent-2: #7bff90;
+      --danger: #ff6b6b;
+      --text: #e8ecf1;
+      --muted: #aab3c5;
+      --gold: #ffd166;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 80% -200px, #1a1f3f 0%, #0d1022 40%, var(--bg) 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 76px 20px 20px;
+      /* Reserve space for fixed side panels */
+      padding-left: 260px;
+      padding-right: 320px;
+    }
+    header.topbar {
+      position: fixed;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(1100px, calc(100% - 20px));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0;
+      background: linear-gradient(180deg, #252b53, #1a1f41);
+      border: 1px solid #2b3266;
+      border-radius: 12px;
+      padding: 6px 10px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25), inset 0 0 20px rgba(92,200,255,0.06);
+      z-index: 1001;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: 0.3px;
+    }
+    .timer {
+      background: linear-gradient(180deg, #252b53, #1a1f41);
+      border: 1px solid #2b3266;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 700;
+      color: var(--text);
+      box-shadow: inset 0 0 20px rgba(92,200,255,0.06);
+    }
+    .timer.small { padding: 6px 10px; font-size: 14px; }
+
+    .hud {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+    .hud-res {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .chip {
+      background: #121633;
+      border: 1px solid #2b3266;
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn.sm { padding: 6px 8px; font-size: 12px; border-radius: 8px; }
+    .rateTop { color: #8bb9ff; font-weight: 700; margin-left: 4px; }
+    .chip .lbl { font-weight: 700; font-size: 11px; color: var(--muted); letter-spacing: 0.3px; margin-right: 4px; }
+
+    /* Speed segmented control */
+    .seg {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      background: #121633;
+      border: 1px solid #2b3266;
+      border-radius: 10px;
+      padding: 2px;
+    }
+    .seg-btn {
+      background: transparent;
+      border: 0;
+      color: var(--text);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .seg-btn.active {
+      background: linear-gradient(180deg, #2a70ff, #224dcc);
+      border: 1px solid #2e5fff;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: linear-gradient(180deg, #1b2146, #131837);
+      border: 1px solid #2a3165;
+      border-radius: 14px;
+      padding: 10px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25), inset 0 0 40px rgba(124,148,255,0.04);
+    }
+    .panel h2 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.4px;
+    }
+    .resources {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .res {
+      background: #121633;
+      border: 1px solid #2b3266;
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .res .name {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+    }
+    .res .value {
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .res .rate {
+      font-size: 12px;
+      color: #8bb9ff;
+    }
+    .build-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 700px) {
+      .build-list { grid-template-columns: 1fr; }
+    }
+    .build {
+      background: #121633;
+      border: 1px solid #2b3266;
+      border-radius: 10px;
+      padding: 8px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+    .build .title {
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .build .subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .cost {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .cost span { display: inline-flex; gap: 6px; align-items: center; }
+    .btn {
+      background: linear-gradient(180deg, #2a70ff, #224dcc);
+      border: 1px solid #2e5fff;
+      color: white;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.05s ease, filter 0.15s ease, opacity 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn:hover { filter: brightness(1.05); }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .missions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .mission {
+      background: #121633;
+      border: 1px solid #2b3266;
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .mission .text { font-size: 14px; }
+    .mission .status {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+    }
+    .mission.done {
+      border-color: #3ba86b;
+      box-shadow: inset 0 0 20px rgba(60,200,120,0.12);
+    }
+    .mission.done .status {
+      color: var(--accent-2);
+    }
+    .log {
+      height: 120px;
+      overflow: auto;
+      background: #0f1330;
+      border: 1px solid #2b3266;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 12px;
+    }
+    .log p { margin: 0 0 4px 0; color: #b2c3ff; }
+    .footer {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 8, 25, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 2000;
+      backdrop-filter: blur(2px);
+    }
+    .modal {
+      background: linear-gradient(180deg, #1b2146, #151a3c);
+      border: 1px solid #2a3165;
+      border-radius: 16px;
+      padding: 20px;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.35), inset 0 0 60px rgba(124,148,255,0.06);
+    }
+    .modal h3 {
+      margin: 0 0 10px 0;
+      font-size: 20px;
+    }
+    .muted { color: var(--muted); }
+    .danger { color: var(--danger); }
+    .gold { color: var(--gold); }
+
+    /* Start settings form */
+    .form { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+    .form .row { display: grid; grid-template-columns: 1.2fr 1fr; align-items: center; gap: 10px; }
+    @media (max-width: 520px) { .form .row { grid-template-columns: 1fr; } }
+    .form label { font-size: 13px; color: var(--muted); text-align: right; }
+    @media (max-width: 520px) { .form label { text-align: left; } }
+    .form select {
+      background: #121633;
+      color: var(--text);
+      border: 1px solid #2b3266;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-weight: 700;
+    }
+    .form .hint { margin-top: 6px; font-size: 12px; color: var(--muted); }
+    /* End settings form */
+
+  /* Resource emoji labels */
+    .resources .res:nth-child(1) .name::before { content: "🌲 "; }
+    .resources .res:nth-child(2) .name::before { content: "🪨 "; }
+    .resources .res:nth-child(3) .name::before { content: "🍖 "; }
+    .resources .res:nth-child(4) .name::before { content: "🪙 "; }
+
+  /* Map (visual buildings) */
+    .map {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+      gap: 4px;
+      background: #0f1330;
+      border: 1px solid #2b3266;
+      border-radius: 12px;
+      padding: 8px;
+      /* Make the map a square and center it */
+      aspect-ratio: 1 / 1;
+      width: min(80vmin, 720px);
+      margin: 0 auto;
+      box-shadow: inset 0 0 40px rgba(124,148,255,0.06);
+      overflow: hidden;
+    }
+    /* Выбор клетки для строительства */
+    .map.selecting {
+      box-shadow: inset 0 0 0 2px #2e5fff, inset 0 0 40px rgba(124,148,255,0.12);
+    }
+    .tile.selectable {
+      cursor: crosshair;
+      outline: 2px dashed #2e5fff;
+      outline-offset: -2px;
+      background: linear-gradient(180deg, #141a45, #10163a);
+    }
+    .tile.selectable:hover {
+      background: linear-gradient(180deg, #18205a, #121a44);
+      filter: brightness(1.05);
+    }
+    .tile.occ {
+      opacity: 0.95;
+    }
+    .tile {
+      background: linear-gradient(180deg, #121633, #0e1230);
+      border: 1px solid #1f2550;
+      border-radius: 6px;
+      position: relative;
+    }
+    .bld {
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      user-select: none;
+      border-radius: 8px;
+      transition: transform 0.12s ease, filter 0.2s ease;
+      animation: pop-in 160ms ease-out;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+      /* allow клики по плиткам даже если иконка здания поверх */
+      pointer-events: none;
+    }
+    .bld:hover { transform: translateY(-1px) scale(1.02); filter: brightness(1.05); }
+    .bld[data-type="townHall"] { font-size: 22px; }
+    @keyframes pop-in {
+      from { transform: scale(0.85); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .legend span b { font-size: 14px; margin-right: 6px; }
+
+    /* Fixed side panels */
+    .left-fixed {
+      position: fixed;
+      left: 10px;
+      top: 76px;
+      width: 220px;
+      z-index: 1000;
+    }
+    .right-fixed {
+      position: fixed;
+      right: 10px;
+      top: 76px;
+      width: 280px;
+      max-height: calc(100vh - 96px);
+      overflow: auto;
+      z-index: 1000;
+    }
+    .left-fixed .panel,
+    .right-fixed .panel { margin: 0; }
+
+    /* Build list as a narrow column */
+    .left-fixed .build-list {
+      grid-template-columns: 1fr;
+    }
+
+    /* Compact build cards */
+    .left-fixed .build { padding: 8px; }
+    .left-fixed .build .subtitle { font-size: 11px; }
+    .left-fixed .build .cost { font-size: 11px; }
+
+    /* Collapsible log */
+    .details-log { margin-top: 8px; }
+    .details-log summary {
+      cursor: pointer;
+      color: var(--muted);
+      user-select: none;
+      font-weight: 700;
+    }
+    .details-log .log { margin-top: 8px; }
+
+    /* Responsive adjustments */
+    @media (max-width: 900px) {
+      .left-fixed, .right-fixed {
+        position: static;
+        width: auto;
+        max-height: none;
+      }
+      .container {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+      .map { width: min(92vmin, 640px); }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="topbar">
+      <div class="hud">
+        <div class="hud-res">
+          <span class="chip"><span class="lbl">Дерево</span> 🌲 <b id="woodValTop">0</b> <span class="rateTop" id="woodRateTop">+0/с</span></span>
+          <span class="chip"><span class="lbl">Камень</span> 🪨 <b id="stoneValTop">0</b> <span class="rateTop" id="stoneRateTop">+0/с</span></span>
+          <span class="chip"><span class="lbl">Еда</span> 🍖 <b id="foodValTop">0</b> <span class="rateTop" id="foodRateTop">+0/с</span></span>
+          <span class="chip"><span class="lbl">Золото</span> 🪙 <b id="goldValTop">0</b> <span class="rateTop" id="goldRateTop">+0/с</span></span>
+          <span class="chip"><span class="lbl">Жители</span> 👥 <b id="popValTop">0</b> <span class="rateTop" id="popRateTop">+0/с</span></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="timer small">⏱ <span id="timeText">04:00</span></div>
+          <div class="seg" aria-label="Скорость времени">
+            <button class="seg-btn active" id="btn-speed-1">x1</button>
+            <button class="seg-btn" id="btn-speed-2">x2</button>
+            <button class="seg-btn" id="btn-speed-3">x3</button>
+          </div>
+          <button class="btn sm" id="btn-pause">Пауза</button>
+          <button class="btn sm" id="btn-resume" disabled>Продолжить</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Left fixed build menu -->
+    <aside class="left-fixed">
+      <section class="panel">
+        <h2>Строительство</h2>
+        <div class="build-list">
+          <div class="build">
+            <div>
+              <div class="title">Дом <span class="muted">(x<span id="cnt-house">0</span>)</span></div>
+              <div class="subtitle">+3 👥</div>
+              <div class="cost" id="cost-house"></div>
+            </div>
+            <button class="btn" id="btn-house">Построить</button>
+          </div>
+          <div class="build">
+            <div>
+              <div class="title">Лесопилка <span class="muted">(x<span id="cnt-lumberMill">0</span>)</span></div>
+              <div class="subtitle">+1 🌲/с</div>
+              <div class="cost" id="cost-lumberMill"></div>
+            </div>
+            <button class="btn" id="btn-lumberMill">Построить</button>
+          </div>
+          <div class="build">
+            <div>
+              <div class="title">Каменоломня <span class="muted">(x<span id="cnt-quarry">0</span>)</span></div>
+              <div class="subtitle">+1 🪨/с</div>
+              <div class="cost" id="cost-quarry"></div>
+            </div>
+            <button class="btn" id="btn-quarry">Построить</button>
+          </div>
+          <div class="build">
+            <div>
+              <div class="title">Ферма <span class="muted">(x<span id="cnt-farm">0</span>)</span></div>
+              <div class="subtitle">+1 🍖/с</div>
+              <div class="cost" id="cost-farm"></div>
+            </div>
+            <button class="btn" id="btn-farm">Построить</button>
+          </div>
+          <div class="build">
+            <div>
+              <div class="title">Золотой рудник <span class="muted">(x<span id="cnt-goldMine">0</span>)</span></div>
+              <div class="subtitle">+0.5 🪙/с</div>
+              <div class="cost" id="cost-goldMine"></div>
+            </div>
+            <button class="btn" id="btn-goldMine">Построить</button>
+          </div>
+          <div class="build">
+            <div>
+              <div class="title">Ратуша <span class="muted">(x<span id="cnt-townHall">0</span>)</span></div>
+              <div class="subtitle gold">Постройте, чтобы выиграть</div>
+              <div class="cost" id="cost-townHall"></div>
+            </div>
+            <button class="btn" id="btn-townHall">Построить</button>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Right fixed missions and collapsible log -->
+    <aside class="right-fixed">
+      <section class="panel">
+        <h2>Задания</h2>
+        <div class="missions" id="missions"></div>
+        <details class="details-log">
+          <summary>Журнал</summary>
+          <div class="log" id="log"></div>
+        </details>
+      </section>
+    </aside>
+
+    <section class="panel">
+      <h2>Поселение</h2>
+      <div class="map" id="map"></div>
+      <div class="legend">
+        <span><b>🏛️</b> Ратуша</span>
+        <span><b>🪓</b> Лесопилка</span>
+        <span><b>⛏️</b> Каменоломня</span>
+        <span><b>🌾</b> Ферма</span>
+        <span><b>🏠</b> Дом</span>
+        <span><b>🪙</b> Золотой рудник</span>
+      </div>
+    </section>
+
+    <!-- Панели строительства и заданий перенесены в фиксированные боковые панели -->
+  </div>
+
+  <div class="overlay" id="startOverlay">
+    <div class="modal">
+      <h3>Настройки сложности</h3>
+      <div class="form">
+        <div class="row">
+          <label for="sel-cost">Стоимость зданий</label>
+          <select id="sel-cost">
+            <option value="cheap">дешевые (проще)</option>
+            <option value="medium" selected>средние</option>
+            <option value="expensive">дорогие (сложнее)</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="sel-time">Время для выполнения заданий</label>
+          <select id="sel-time">
+            <option value="short">мало времени (сложнее)</option>
+            <option value="medium" selected>средний запас времени</option>
+            <option value="long">много времени (проще)</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="sel-missions">Сложность заданий</label>
+          <select id="sel-missions">
+            <option value="easy">легкие задания</option>
+            <option value="medium" selected>средние задания</option>
+            <option value="hard">сложные задания</option>
+          </select>
+        </div>
+        <p id="startInfo" class="hint">По умолчанию: 04:00, базовые цены и 3 задания.</p>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:center; margin-top:14px;">
+        <button class="btn" id="btn-start">Начать игру</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="winOverlay" style="display:none;">
+    <div class="modal">
+      <h3 class="gold">Победа!</h3>
+      <p>Вы выполнили все задания и построили Ратушу до истечения времени.</p>
+      <div style="display:flex; gap:10px; justify-content:center; margin-top:14px;">
+        <button class="btn" id="btn-restart-win">Сыграть ещё раз</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="loseOverlay" style="display:none;">
+    <div class="modal">
+      <h3 class="danger">Поражение</h3>
+      <p>Время истекло. Попробуйте ещё раз — у вас получится!</p>
+      <div style="display:flex; gap:10px; justify-content:center; margin-top:14px;">
+        <button class="btn" id="btn-restart-lose">Повторить</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const format = (n) => {
+        return (Math.abs(n) % 1 < 0.001) ? Math.round(n).toString() : n.toFixed(1);
+      };
+
+      const state = {
+        started: false,
+        paused: false,
+        won: false,
+        timeLeft: 240,
+        multiplier: 1.25,
+        resources: { wood: 50, stone: 50, food: 30, gold: 0, pop: 3 },
+        rates: { wood: 0, stone: 0, food: 0, gold: 0, pop: 0 },
+        counts: { house: 0, lumberMill: 0, quarry: 0, farm: 0, goldMine: 0, townHall: 0 },
+        loops: { tick: null, ui: null, timer: null },
+        map: { w: 12, h: 6, occupied: [] },
+        built: [],
+        timeSpeed: 1,
+        settings: { cost: 'medium', time: 'medium', missions: 'medium' },
+      };
+
+      const BUILDINGS = {
+        house: {
+          key: 'house',
+          name: 'Дом',
+          resource: 'pop',
+          baseRate: 0,
+          fixedPopGain: 3,
+          baseCost: { wood: 5, stone: 5, food: 5, gold: 0, pop: 0 },
+        },
+        lumberMill: {
+          key: 'lumberMill',
+          name: 'Лесопилка',
+          resource: 'wood',
+          baseRate: 1,
+          baseCost: { wood: 0, stone: 10, food: 5, gold: 0, pop: 1 },
+        },
+        quarry: {
+          key: 'quarry',
+          name: 'Каменоломня',
+          resource: 'stone',
+          baseRate: 1,
+          baseCost: { wood: 10, stone: 0, food: 5, gold: 0, pop: 1 },
+        },
+        farm: {
+          key: 'farm',
+          name: 'Ферма',
+          resource: 'food',
+          baseRate: 1,
+          baseCost: { wood: 10, stone: 10, food: 0, gold: 0, pop: 1 },
+        },
+        goldMine: {
+          key: 'goldMine',
+          name: 'Золотой рудник',
+          resource: 'gold',
+          baseRate: 0.5,
+          baseCost: { wood: 30, stone: 30, food: 20, gold: 0, pop: 2 },
+        },
+        townHall: {
+          key: 'townHall',
+          name: 'Ратуша',
+          resource: null,
+          baseRate: 0,
+          baseCost: { wood: 150, stone: 150, food: 100, gold: 75, pop: 5 },
+          single: true,
+        },
+      };
+
+      // Visual map/icons for buildings
+      const ICONS = {
+        house: '🏠',
+        lumberMill: '🪓',
+        quarry: '⛏️',
+        farm: '🌾',
+        goldMine: '🪙',
+        townHall: '🏛️',
+      };
+
+      // Difficulty mappings
+      const COST_SCALE = { cheap: 0.8, medium: 1.0, expensive: 1.5 };
+      const TIME_PRESETS = { short: 240, medium: 360, long: 480 };
+
+      // Helpers
+      function formatTimeSecToMMSS(sec) {
+        const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+        const ss = String(sec % 60).padStart(2, '0');
+        return mm + ':' + ss;
+      }
+
+      function generateMissions(level) {
+        if (level === 'easy') {
+          return [
+            { id: 1, text: 'Постройте 1 Лесопилку, 1 Каменоломню и 1 Ферму', check: () => state.counts.lumberMill >= 1 && state.counts.quarry >= 1 && state.counts.farm >= 1 },
+            { id: 2, text: 'Накопите 150 дерева, 150 камня и 80 еды', check: () => state.resources.wood >= 150 && state.resources.stone >= 150 && state.resources.food >= 80 },
+            { id: 3, text: 'Постройте Ратушу', check: () => state.counts.townHall >= 1 },
+          ];
+        } else if (level === 'hard') {
+          return [
+            { id: 1, text: 'Постройте 6 лесопилок, 6 каменоломен и 6 ферм', check: () => state.counts.lumberMill >= 6 && state.counts.quarry >= 6 && state.counts.farm >= 6 },
+            { id: 2, text: 'Накопите 250 дерева, 250 камня и 120 еды', check: () => state.resources.wood >= 250 && state.resources.stone >= 250 && state.resources.food >= 120 },
+            { id: 3, text: 'Постройте Золотой рудник', check: () => state.counts.goldMine >= 1 },
+            { id: 4, text: 'Накопите 50 золота', check: () => state.resources.gold >= 50 },
+            { id: 5, text: 'Постройте Ратушу', check: () => state.counts.townHall >= 1 },
+          ];
+        }
+        // medium (default)
+        return [
+          { id: 1, text: 'Постройте 1 Лесопилку, 1 Каменоломню и 1 Ферму', check: () => state.counts.lumberMill >= 1 && state.counts.quarry >= 1 && state.counts.farm >= 1 },
+          { id: 2, text: 'Накопите 200 дерева, 200 камня и 100 еды', check: () => state.resources.wood >= 200 && state.resources.stone >= 200 && state.resources.food >= 100 },
+          { id: 3, text: 'Постройте Ратушу', check: () => state.counts.townHall >= 1 },
+        ];
+      }
+
+      function applySettings() {
+        // time
+        state.timeLeft = TIME_PRESETS[state.settings.time] || 240;
+        // missions
+        MISSIONS = generateMissions(state.settings.missions);
+        renderMissions();
+        // Costs will be recalculated dynamically via currentCost -> COST_SCALE
+      }
+
+      function updateStartInfo() {
+        if (!el.startInfo) return;
+        const t = TIME_PRESETS[el.sel.time.value] || 240;
+        const m = el.sel.missions.value;
+        const tasksCount = generateMissions(m).length;
+        let costLabel = el.sel.cost.value === 'cheap' ? 'дешёвые' : el.sel.cost.value === 'expensive' ? 'дорогие' : 'средние';
+        const msg = `Время: ${formatTimeSecToMMSS(t)}, цены: ${costLabel}, заданий: ${tasksCount}.`;
+        el.startInfo.textContent = msg;
+      }
+
+      function resetMapState() {
+        state.map.occupied = Array.from({ length: state.map.h }, () => Array(state.map.w).fill(null));
+        state.built = [];
+      }
+
+      function initMapTiles() {
+        if (!el.map) return;
+        // reset tiles and occupancy
+        el.map.innerHTML = '';
+        resetMapState();
+        // init tiles storage
+        tiles.byPos = Array.from({ length: state.map.h }, () => Array(state.map.w).fill(null));
+        // render base tiles
+        for (let y = 0; y < state.map.h; y++) {
+          for (let x = 0; x < state.map.w; x++) {
+            const t = document.createElement('div');
+            t.className = 'tile';
+            t.dataset.x = String(x);
+            t.dataset.y = String(y);
+            t.style.gridColumn = String(x + 1);
+            t.style.gridRow = String(y + 1);
+            t.addEventListener('click', onTileClick);
+            el.map.appendChild(t);
+            tiles.byPos[y][x] = t;
+          }
+        }
+      }
+
+      function findFreeCell() {
+        for (let y = 0; y < state.map.h; y++) {
+          for (let x = 0; x < state.map.w; x++) {
+            if (!state.map.occupied[y][x]) return { x, y };
+          }
+        }
+        return null;
+      }
+
+      function placeBuilding(buildKey) {
+        if (!el.map) return;
+        const pos = findFreeCell();
+        if (!pos) {
+          log('На карте нет свободного места — новое здание не отображено.');
+          return;
+        }
+        placeBuildingAt(buildKey, pos.x, pos.y);
+      }
+
+      function placeBuildingAt(buildKey, x, y) {
+        if (!el.map) return;
+        state.map.occupied[y][x] = buildKey;
+        const icon = ICONS[buildKey] || '🏗️';
+        const def = BUILDINGS[buildKey];
+        const b = document.createElement('div');
+        b.className = 'bld';
+        b.dataset.type = buildKey;
+        b.style.gridColumn = String(x + 1);
+        b.style.gridRow = String(y + 1);
+        b.title = def.name;
+        b.textContent = icon;
+        el.map.appendChild(b);
+        state.built.push({ key: buildKey, x, y });
+        // пометить плитку занятой
+        const tile = tiles.byPos?.[y]?.[x];
+        if (tile) tile.classList.add('occ');
+      }
+
+      let MISSIONS = generateMissions('medium');
+      // хранение ссылок на плитки карты
+      const tiles = {
+        byPos: [], // [y][x] -> HTMLElement
+      };
+      // состояние выбора клетки для строительства
+      state.placement = { active: false, buildKey: null };
+
+      // DOM
+      const el = {
+        timeText: document.getElementById('timeText'),
+        startOverlay: document.getElementById('startOverlay'),
+        winOverlay: document.getElementById('winOverlay'),
+        loseOverlay: document.getElementById('loseOverlay'),
+        log: document.getElementById('log'),
+        missions: document.getElementById('missions'),
+        map: document.getElementById('map'),
+        btnStart: document.getElementById('btn-start'),
+        btnPause: document.getElementById('btn-pause'),
+        btnResume: document.getElementById('btn-resume'),
+        btnRestartWin: document.getElementById('btn-restart-win'),
+        btnRestartLose: document.getElementById('btn-restart-lose'),
+        startInfo: document.getElementById('startInfo'),
+        sel: {
+          cost: document.getElementById('sel-cost'),
+          time: document.getElementById('sel-time'),
+          missions: document.getElementById('sel-missions'),
+        },
+        resVals: {
+          wood: document.getElementById('woodVal'),
+          stone: document.getElementById('stoneVal'),
+          food: document.getElementById('foodVal'),
+          gold: document.getElementById('goldVal'),
+        },
+        resValsTop: {
+          wood: document.getElementById('woodValTop'),
+          stone: document.getElementById('stoneValTop'),
+          food: document.getElementById('foodValTop'),
+          gold: document.getElementById('goldValTop'),
+          pop: document.getElementById('popValTop'),
+        },
+        rateVals: {
+          wood: document.getElementById('woodRate'),
+          stone: document.getElementById('stoneRate'),
+          food: document.getElementById('foodRate'),
+          gold: document.getElementById('goldRate'),
+        },
+        rateValsTop: {
+          wood: document.getElementById('woodRateTop'),
+          stone: document.getElementById('stoneRateTop'),
+          food: document.getElementById('foodRateTop'),
+          gold: document.getElementById('goldRateTop'),
+          pop: document.getElementById('popRateTop'),
+        },
+        cnt: {
+          house: document.getElementById('cnt-house'),
+          lumberMill: document.getElementById('cnt-lumberMill'),
+          quarry: document.getElementById('cnt-quarry'),
+          farm: document.getElementById('cnt-farm'),
+          goldMine: document.getElementById('cnt-goldMine'),
+          townHall: document.getElementById('cnt-townHall'),
+        },
+        cost: {
+          house: document.getElementById('cost-house'),
+          lumberMill: document.getElementById('cost-lumberMill'),
+          quarry: document.getElementById('cost-quarry'),
+          farm: document.getElementById('cost-farm'),
+          goldMine: document.getElementById('cost-goldMine'),
+          townHall: document.getElementById('cost-townHall'),
+        },
+        btn: {
+          house: document.getElementById('btn-house'),
+          lumberMill: document.getElementById('btn-lumberMill'),
+          quarry: document.getElementById('btn-quarry'),
+          farm: document.getElementById('btn-farm'),
+          goldMine: document.getElementById('btn-goldMine'),
+          townHall: document.getElementById('btn-townHall'),
+        },
+        speed: {
+          x1: document.getElementById('btn-speed-1'),
+          x2: document.getElementById('btn-speed-2'),
+          x3: document.getElementById('btn-speed-3'),
+        },
+      };
+
+      // Utils
+      function log(msg) {
+        const p = document.createElement('p');
+        p.textContent = msg;
+        el.log.prepend(p);
+      }
+
+      function currentCost(buildKey) {
+        const def = BUILDINGS[buildKey];
+        const c = state.counts[buildKey];
+        const factor = def.single ? 1 : Math.pow(state.multiplier, c);
+        const base = def.baseCost;
+        const s = COST_SCALE[state.settings.cost] || 1;
+        const bv = (v) => Math.ceil(((v || 0)) * factor * s);
+        return {
+          wood: bv(base.wood),
+          stone: bv(base.stone),
+          food: bv(base.food),
+          gold: bv(base.gold),
+          pop: bv(base.pop),
+        };
+      }
+
+      function canAfford(cost) {
+        return (
+          state.resources.wood >= cost.wood &&
+          state.resources.stone >= cost.stone &&
+          state.resources.food >= cost.food &&
+          state.resources.gold >= cost.gold &&
+          state.resources.pop >= (cost.pop || 0)
+        );
+      }
+
+      function spend(cost) {
+        state.resources.wood -= cost.wood;
+        state.resources.stone -= cost.stone;
+        state.resources.food -= cost.food;
+        state.resources.gold -= cost.gold;
+        state.resources.pop -= (cost.pop || 0);
+      }
+
+      function addRates(res, value) {
+        if (!res) return;
+        state.rates[res] += value;
+      }
+
+      // режим выбора клетки для строительства
+      function enterPlacementMode(buildKey) {
+        const def = BUILDINGS[buildKey];
+        if (def.single && state.counts[buildKey] >= 1) {
+          log(def.name + ': уже построено.');
+          return;
+        }
+        const free = findFreeCell();
+        if (!free) {
+          log('На карте нет свободных клеток.');
+          return;
+        }
+        // Сохраним предыдущее состояние паузы и поставим игру на паузу
+        state.placement.prevPaused = !!state.paused;
+        state.placement.active = true;
+        state.placement.buildKey = buildKey;
+        state.paused = true;
+        refreshUI();
+
+        if (el.map) el.map.classList.add('selecting');
+        for (let y = 0; y < state.map.h; y++) {
+          for (let x = 0; x < state.map.w; x++) {
+            if (!state.map.occupied[y][x]) {
+              tiles.byPos[y][x]?.classList.add('selectable');
+            } else {
+              tiles.byPos[y][x]?.classList.remove('selectable');
+            }
+          }
+        }
+        log('Игра поставлена на паузу. Выберите клетку для строительства: ' + def.name + '. Нажмите Esc, чтобы отменить.');
+      }
+
+      function leavePlacementMode() {
+        state.placement.active = false;
+        state.placement.buildKey = null;
+        if (el.map) el.map.classList.remove('selecting');
+        for (let y = 0; y < state.map.h; y++) {
+          for (let x = 0; x < state.map.w; x++) {
+            tiles.byPos[y][x]?.classList.remove('selectable');
+          }
+        }
+        // Восстановим паузу — если до входа в режим выбора игра была запущена, возобновим
+        const prev = state.placement.prevPaused;
+        if (typeof prev !== 'undefined') {
+          // prevPaused === true означает что ранее игра была на паузе, поэтому оставим паузу
+          state.paused = !!prev;
+          delete state.placement.prevPaused;
+        } else {
+          // по умолчанию снимем паузу
+          state.paused = false;
+        }
+        refreshUI();
+      }
+
+      function onTileClick(e) {
+        // Разрешаем клик по плитке даже когда игра временно поставлена на паузу в режиме выбора клетки.
+        // Игрок может выбрать клетку для строительства, даже если state.paused === true,
+        // но другие клики вне режима выбора остаются блокированы.
+        if (!state.started) return;
+        if (!state.placement.active) return;
+        const t = e.currentTarget;
+        const x = Number(t.dataset.x);
+        const y = Number(t.dataset.y);
+        if (state.map.occupied[y][x]) {
+          log('Эта клетка уже занята.');
+          return;
+        }
+        const buildKey = state.placement.buildKey;
+        const def = BUILDINGS[buildKey];
+        const cost = currentCost(buildKey);
+        if (!canAfford(cost)) {
+          log('Недостаточно ресурсов для: ' + def.name);
+          return;
+        }
+        // списываем и строим
+        spend(cost);
+        state.counts[buildKey] += 1;
+        addRates(def.resource, def.baseRate);
+        if (def.fixedPopGain) {
+          state.resources.pop = (state.resources.pop || 0) + def.fixedPopGain;
+        }
+        placeBuildingAt(def.key, x, y);
+  
+        const parts = [];
+        if (cost.wood) parts.push('🌲 ' + cost.wood);
+        if (cost.stone) parts.push('🪨 ' + cost.stone);
+        if (cost.food) parts.push('🍖 ' + cost.food);
+        if (cost.gold) parts.push('🪙 ' + cost.gold);
+        if (cost.pop) parts.push('👥 ' + cost.pop);
+        log('Построено: ' + def.name + (parts.length ? ' (стоимость: ' + parts.join(', ') + ')' : ''));
+        if (def.fixedPopGain) log('Население увеличено на +' + def.fixedPopGain);
+  
+        // Сохраним предыдущее состояние паузы и корректно восстановим после размещения
+        const prev = state.placement.prevPaused;
+        leavePlacementMode();
+        if (typeof prev !== 'undefined' && !prev) {
+          // если до входа в режим выбора игра была НЕ на паузе — возобновим циклы
+          if (!state.won && !state.loops.tick) startLoops();
+          state.paused = false;
+        }
+  
+        checkMissions();
+        renderCosts();
+        refreshUI();
+        checkWin();
+      }
+
+      function build(buildKey) {
+        // теперь первая стадия: выбор клетки
+        if (!state.started) return;
+        enterPlacementMode(buildKey);
+      }
+
+      function checkMissions() {
+        let changed = false;
+        for (const m of MISSIONS) {
+          const nowDone = m.check();
+          if (nowDone !== !!m.done) {
+            m.done = nowDone;
+            changed = true;
+            if (nowDone) log('Задание выполнено: ' + m.text);
+          }
+        }
+        if (changed) renderMissions();
+        // На случай, если последняя задача закрылась от пассивного прироста — проверим победу
+        checkWin();
+      }
+
+      function setSpeed(mult) {
+        state.timeSpeed = mult;
+        updateSpeedUI();
+      }
+      function updateSpeedUI() {
+        if (!el.speed) return;
+        const s = state.timeSpeed;
+        if (el.speed.x1) el.speed.x1.classList.toggle('active', s === 1);
+        if (el.speed.x2) el.speed.x2.classList.toggle('active', s === 2);
+        if (el.speed.x3) el.speed.x3.classList.toggle('active', s === 3);
+      }
+
+      function checkWin() {
+        const allDone = MISSIONS.every(m => m.check());
+        if (allDone && !state.won) {
+          state.won = true;
+          stopLoops();
+          el.winOverlay.style.display = 'flex';
+          log('Вы выиграли! Ратуша возведена, все задания закрыты.');
+        }
+      }
+
+      function tick() {
+        if (state.paused) return;
+        const sp = state.timeSpeed || 1;
+        // add resources accelerated by speed
+        for (const k of ['wood','stone','food','gold','pop']) {
+          state.resources[k] += state.rates[k] * sp;
+        }
+        checkMissions();
+        // Дополнительная подстраховка победы при пассивных изменениях
+        checkWin();
+      }
+
+      function renderCosts() {
+        for (const key of Object.keys(BUILDINGS)) {
+          const cost = currentCost(key);
+          const c = [];
+          if (cost.wood) c.push('🌲 ' + cost.wood);
+          if (cost.stone) c.push('🪨 ' + cost.stone);
+          if (cost.food) c.push('🍖 ' + cost.food);
+          if (cost.gold) c.push('🪙 ' + cost.gold);
+          if (cost.pop) c.push('👥 ' + cost.pop);
+          el.cost[key].textContent = c.length ? ('Стоимость: ' + c.join(' | ')) : 'Бесплатно';
+        }
+      }
+
+      function refreshUI() {
+        // resources (bottom panel, если присутствует)
+        if (el.resVals.wood) el.resVals.wood.textContent = format(state.resources.wood);
+        if (el.resVals.stone) el.resVals.stone.textContent = format(state.resources.stone);
+        if (el.resVals.food) el.resVals.food.textContent = format(state.resources.food);
+        if (el.resVals.gold) el.resVals.gold.textContent = format(state.resources.gold);
+
+        // ресурсы в верхнем HUD
+        if (el.resValsTop) {
+          if (el.resValsTop.wood) el.resValsTop.wood.textContent = format(state.resources.wood);
+          if (el.resValsTop.stone) el.resValsTop.stone.textContent = format(state.resources.stone);
+          if (el.resValsTop.food) el.resValsTop.food.textContent = format(state.resources.food);
+          if (el.resValsTop.gold) el.resValsTop.gold.textContent = format(state.resources.gold);
+          if (el.resValsTop.pop) el.resValsTop.pop.textContent = format(state.resources.pop);
+        }
+
+        // доходы снизу (если присутствуют) — показываем с учётом скорости
+        const spd = state.timeSpeed || 1;
+        if (el.rateVals.wood) el.rateVals.wood.textContent = '+' + format(state.rates.wood * spd) + '/с';
+        if (el.rateVals.stone) el.rateVals.stone.textContent = '+' + format(state.rates.stone * spd) + '/с';
+        if (el.rateVals.food) el.rateVals.food.textContent = '+' + format(state.rates.food * spd) + '/с';
+        if (el.rateVals.gold) el.rateVals.gold.textContent = '+' + format(state.rates.gold * spd) + '/с';
+
+        // доходы в верхнем HUD — также с учётом скорости
+        if (el.rateValsTop) {
+          if (el.rateValsTop.wood) el.rateValsTop.wood.textContent = '+' + format(state.rates.wood * spd) + '/с';
+          if (el.rateValsTop.stone) el.rateValsTop.stone.textContent = '+' + format(state.rates.stone * spd) + '/с';
+          if (el.rateValsTop.food) el.rateValsTop.food.textContent = '+' + format(state.rates.food * spd) + '/с';
+          if (el.rateValsTop.gold) el.rateValsTop.gold.textContent = '+' + format(state.rates.gold * spd) + '/с';
+          if (el.rateValsTop.pop) el.rateValsTop.pop.textContent = '+' + format(state.rates.pop * spd) + '/с';
+        }
+
+        // обновить выделение скорости
+        updateSpeedUI();
+
+        // counts
+        for (const key of Object.keys(state.counts)) {
+          el.cnt[key].textContent = state.counts[key];
+        }
+
+        // buttons enabled/disabled
+        for (const key of Object.keys(BUILDINGS)) {
+          const cost = currentCost(key);
+          const def = BUILDINGS[key];
+          const can = canAfford(cost) && !(def.single && state.counts[key] >= 1);
+          // Разрешаем инициировать строительство даже когда игра на паузе,
+          // но кнопки всё ещё блокируются если игра не начата или ресурсов недостаточно.
+          el.btn[key].disabled = !state.started || !can;
+        }
+
+        // timer
+        const mm = String(Math.floor(state.timeLeft / 60)).padStart(2,'0');
+        const ss = String(state.timeLeft % 60).padStart(2,'0');
+        el.timeText.textContent = mm + ':' + ss;
+      }
+
+      function renderMissions() {
+        el.missions.innerHTML = '';
+        for (const m of MISSIONS) {
+          const div = document.createElement('div');
+          div.className = 'mission' + (m.check() ? ' done' : '');
+          const left = document.createElement('div');
+          left.className = 'text';
+          left.textContent = m.text;
+          const right = document.createElement('div');
+          right.className = 'status';
+          right.textContent = m.check() ? 'Готово' : 'В процессе';
+          div.appendChild(left);
+          div.appendChild(right);
+          el.missions.appendChild(div);
+        }
+      }
+
+      function startTimer() {
+        state.loops.timer = setInterval(() => {
+          if (state.paused) return;
+          if (state.won) return;
+          const sp = state.timeSpeed || 1;
+          state.timeLeft -= sp;
+          if (state.timeLeft <= 0) {
+            state.timeLeft = 0;
+            stopLoops();
+            if (!state.won) {
+              el.loseOverlay.style.display = 'flex';
+              log('Поражение: время вышло.');
+            }
+          }
+        }, 1000);
+      }
+
+      function startLoops() {
+        state.loops.tick = setInterval(tick, 1000);
+        state.loops.ui = setInterval(refreshUI, 200);
+        startTimer();
+      }
+      function stopLoops() {
+        if (state.loops.tick) clearInterval(state.loops.tick);
+        if (state.loops.ui) clearInterval(state.loops.ui);
+        if (state.loops.timer) clearInterval(state.loops.timer);
+        state.loops.tick = state.loops.ui = state.loops.timer = null;
+      }
+
+      function pause() {
+        state.paused = true;
+        refreshUI();
+      }
+      function resume() {
+        state.paused = false;
+        refreshUI();
+      }
+
+      function restart() {
+        stopLoops();
+        // reset state
+        state.started = false;
+        state.paused = false;
+        state.won = false;
+        state.resources = { wood: 50, stone: 50, food: 30, gold: 0, pop: 3 };
+        state.rates = { wood: 0, stone: 0, food: 0, gold: 0, pop: 0 };
+        state.counts = { house: 0, lumberMill: 0, quarry: 0, farm: 0, goldMine: 0, townHall: 0 };
+        state.placement = { active: false, buildKey: null };
+        // apply current settings to time and missions
+        applySettings();
+        for (const m of MISSIONS) delete m.done;
+        el.winOverlay.style.display = 'none';
+        el.loseOverlay.style.display = 'none';
+        el.startOverlay.style.display = 'flex';
+        el.log.innerHTML = '';
+        // reflect selected values in UI
+        if (el.sel?.cost) el.sel.cost.value = state.settings.cost;
+        if (el.sel?.time) el.sel.time.value = state.settings.time;
+        if (el.sel?.missions) el.sel.missions.value = state.settings.missions;
+        updateStartInfo();
+        // re-init map
+        initMapTiles();
+        renderCosts();
+        refreshUI();
+      }
+
+      // Bindings
+      el.btnStart.addEventListener('click', () => {
+        if (state.started) return;
+        // take settings from selects
+        if (el.sel && el.sel.cost) state.settings.cost = el.sel.cost.value;
+        if (el.sel && el.sel.time) state.settings.time = el.sel.time.value;
+        if (el.sel && el.sel.missions) state.settings.missions = el.sel.missions.value;
+        applySettings();
+        renderCosts();
+        state.started = true;
+        el.startOverlay.style.display = 'none';
+        const tasksCount = MISSIONS.length;
+        const timeText = formatTimeSecToMMSS(state.timeLeft);
+        const costLabel = state.settings.cost === 'cheap' ? 'дешёвые' : state.settings.cost === 'expensive' ? 'дорогие' : 'средние';
+        log(`Игра началась! Настройки: время ${timeText}, цены ${costLabel}, заданий ${tasksCount}.`);
+        startLoops();
+        refreshUI();
+      });
+      el.btnPause.addEventListener('click', () => {
+        if (!state.started || state.paused) return;
+        pause();
+        el.btnPause.disabled = true;
+        el.btnResume.disabled = false;
+        log('Пауза.');
+      });
+      el.btnResume.addEventListener('click', () => {
+        if (!state.started || !state.paused) return;
+        resume();
+        el.btnPause.disabled = false;
+        el.btnResume.disabled = true;
+        log('Продолжение.');
+      });
+
+      el.btnRestartWin.addEventListener('click', restart);
+      el.btnRestartLose.addEventListener('click', restart);
+
+      for (const key of Object.keys(BUILDINGS)) {
+        el.btn[key].addEventListener('click', () => build(key));
+      }
+
+      // управление скоростью
+      if (el.speed && el.speed.x1) el.speed.x1.addEventListener('click', () => setSpeed(1));
+      if (el.speed && el.speed.x2) el.speed.x2.addEventListener('click', () => setSpeed(2));
+      if (el.speed && el.speed.x3) el.speed.x3.addEventListener('click', () => setSpeed(3));
+      
+      // настройка подсказки времени/задач на старте
+      if (el.sel && el.sel.cost) el.sel.cost.addEventListener('change', updateStartInfo);
+      if (el.sel && el.sel.time) el.sel.time.addEventListener('change', updateStartInfo);
+      if (el.sel && el.sel.missions) el.sel.missions.addEventListener('change', updateStartInfo);
+
+      // Esc для отмены режима выбора клетки
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && state.placement?.active) {
+          leavePlacementMode();
+          log('Выбор клетки отменён.');
+        }
+      });
+      
+      // Initial paint
+      initMapTiles();
+      renderMissions();
+      renderCosts();
+      updateSpeedUI();
+      updateStartInfo();
+      refreshUI();
+    })();
+  </script>
+</body>
+</html>
